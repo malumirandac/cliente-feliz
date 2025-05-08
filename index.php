@@ -127,7 +127,7 @@ switch ($recurso) {
 
     case 'ofertas':
     if ($method === 'GET') {
-        $ofertaController->listar(); // Llama al método listar del controlador
+        $ofertaController->listarOfertasActivas(); // Llama al método listar del controlador
     } elseif ($method === 'POST') {
         $inputData = json_decode(file_get_contents("php://input"), true);
         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -189,12 +189,22 @@ switch ($recurso) {
         case 'postulaciones':
             if ($method === 'GET') {
                 if (!empty($id)) {
-                    $postulacionController->listarPostulacionesPorOferta($id); // Llama al método para listar postulaciones por oferta
+                    $postulacionController->obtenerPostulacion($id); // Obtener una postulación específica por ID
+                } elseif (!empty($_GET['usuario_id'])) {
+                    $postulacionController->obtenerPostulacionesPorCandidato($_GET['usuario_id']); // Obtener postulaciones por candidato
                 } else {
-                    $postulacionController->obtenerPostulaciones($id); // Llama al método general para obtener postulaciones
+                    http_response_code(400);
+                    echo json_encode(["mensaje" => "ID de postulación o usuario no proporcionado"]);
                 }
             } elseif ($method === 'POST') {
-                $postulacionController->crearPostulacion(json_decode(file_get_contents("php://input"), true));
+                $inputData = json_decode(file_get_contents("php://input"), true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    http_response_code(400);
+                    echo json_encode(["mensaje" => "Datos JSON inválidos"]);
+                    break;
+                }
+        
+                $postulacionController->postular($inputData); // Llama al método `postular`
             } elseif ($method === 'PATCH') {
                 $inputData = json_decode(file_get_contents("php://input"), true);
                 if (json_last_error() !== JSON_ERROR_NONE) {

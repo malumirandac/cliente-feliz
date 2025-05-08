@@ -8,10 +8,42 @@ class Postulacion {
 
     public function postular($data) {
         try {
-            $query = "INSERT INTO Postulacion (id_oferta, id_usuario, estado, comentario, fecha_postulacion)
-                      VALUES (:id_oferta, :id_usuario, 'Postulando', '', NOW())";
+            // Verificar si la oferta existe y está vigente
+            $queryOferta = "SELECT id FROM OfertaLaboral WHERE id = :oferta_laboral_id AND estado = 'Vigente'";
+            $stmtOferta = $this->conn->prepare($queryOferta);
+            $stmtOferta->bindParam(':oferta_laboral_id', $data['id_oferta']); // Cambia ':id_oferta' a ':oferta_laboral_id'
+            $stmtOferta->execute();
+            if ($stmtOferta->rowCount() === 0) {
+                error_log("Error al postular: La oferta no existe o no está vigente");
+                return false;
+            }
+    
+            // Verificar si el usuario existe y es un candidato
+            $queryUsuario = "SELECT id FROM Usuario WHERE id = :id_usuario AND rol = 'Candidato'";
+            $stmtUsuario = $this->conn->prepare($queryUsuario);
+            $stmtUsuario->bindParam(':id_usuario', $data['id_usuario']);
+            $stmtUsuario->execute();
+            if ($stmtUsuario->rowCount() === 0) {
+                error_log("Error al postular: El usuario no existe o no es un candidato");
+                return false;
+            }
+    
+            // Verificar si ya existe una postulación para esta oferta y usuario
+            $queryDuplicado = "SELECT id FROM Postulacion WHERE oferta_laboral_id = :oferta_laboral_id AND candidato_id = :id_usuario";
+            $stmtDuplicado = $this->conn->prepare($queryDuplicado);
+            $stmtDuplicado->bindParam(':oferta_laboral_id', $data['id_oferta']); // Cambia ':id_oferta' a ':oferta_laboral_id'
+            $stmtDuplicado->bindParam(':id_usuario', $data['id_usuario']);
+            $stmtDuplicado->execute();
+            if ($stmtDuplicado->rowCount() > 0) {
+                error_log("Error al postular: El usuario ya se ha postulado a esta oferta");
+                return false;
+            }
+    
+            // Insertar la postulación
+            $query = "INSERT INTO Postulacion (oferta_laboral_id, candidato_id, estado_postulacion, comentario, fecha_postulacion)
+                      VALUES (:oferta_laboral_id, :id_usuario, 'Postulando', '', NOW())";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':id_oferta', $data['id_oferta']);
+            $stmt->bindParam(':oferta_laboral_id', $data['id_oferta']); // Cambia ':id_oferta' a ':oferta_laboral_id'
             $stmt->bindParam(':id_usuario', $data['id_usuario']);
             return $stmt->execute();
         } catch (PDOException $e) {
@@ -20,11 +52,14 @@ class Postulacion {
         }
     }
 
-    public function actualizarEstado($id, $estado, $comentario) {
+    public function actualizarEstado($id, $estado_postulacion, $comentario) {
         try {
-            $query = "UPDATE Postulacion SET estado_postulacion = :estado, comentario = :comentario WHERE id = :id";
+            $query = "UPDATE Postulacion 
+                      SET estado_postulacion = :estado_postulacion, 
+                          comentario = CONCAT(IFNULL(comentario, ''), '\n', :comentario) 
+                      WHERE id = :id";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':estado', $estado);
+            $stmt->bindParam(':estado_postulacion', $estado_postulacion);
             $stmt->bindParam(':comentario', $comentario);
             $stmt->bindParam(':id', $id);
             return $stmt->execute();
@@ -42,12 +77,21 @@ class Postulacion {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function obtenerPostulacionesPorUsuario($id_usuario) {
-        $query = "SELECT * FROM Postulacion WHERE id_usuario = :id_usuario";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':id_usuario', $id_usuario);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    public function obtenerPostulacionesPorCandidato($id_usuario) {
+        try {
+            $query = "SELECT p.id, p.estado_postulacion, p.comentario, p.fecha_postulacion, p.fecha_actualizacion, 
+                             o.titulo AS oferta_titulo, o.descripcion AS oferta_descripcion
+                      FROM Postulacion p
+                      INNER JOIN OfertaLaboral o ON p.oferta_laboral_id = o.id
+                      WHERE p.candidato_id = :id_usuario";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':id_usuario', $id_usuario);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error al obtener postulaciones por candidato: " . $e->getMessage());
+            return [];
+        }
     }
 
     public function crearPostulacion($data) {
@@ -82,6 +126,24 @@ class Postulacion {
         } catch (PDOException $e) {
             error_log("Error al listar postulantes por oferta: " . $e->getMessage());
             return [];
+        }
+    }
+
+    public function obtenerPostulacionPorId($id) {
+        try {
+            $query = "SELECT p.id, p.candidato_id, p.oferta_laboral_id, p.estado_postulacion, p.comentario, p.fecha_postulacion, p.fecha_actualizacion,
+                             u.nombre AS candidato_nombre, u.apellido AS candidato_apellido, o.titulo AS oferta_titulo
+                      FROM Postulacion p
+                      INNER JOIN Usuario u ON p.candidato_id = u.id
+                      INNER JOIN OfertaLaboral o ON p.oferta_laboral_id = o.id
+                      WHERE p.id = :id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error al obtener postulación: " . $e->getMessage());
+            return null;
         }
     }
 }

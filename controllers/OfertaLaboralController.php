@@ -9,14 +9,14 @@ class OfertaLaboralController {
         $this->oferta = new OfertaLaboral($db);
     }
 
-    public function listar() {
+    public function listarOfertasActivas() {
         $ofertas = $this->oferta->obtenerOfertasActivas();
         if (!empty($ofertas)) {
             http_response_code(200);
             echo json_encode(["data" => $ofertas]);
         } else {
             http_response_code(404);
-            echo json_encode(["mensaje" => "No se encontraron ofertas activas"]);
+            echo json_encode(["mensaje" => "No se encontraron ofertas laborales activas"]);
         }
     }
 
