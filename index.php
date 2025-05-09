@@ -188,8 +188,8 @@ switch ($recurso) {
 
         case 'postulaciones':
             if ($method === 'GET') {
-                if (!empty($id)) {
-                    $postulacionController->obtenerPostulacion($id); // Obtener una postulación específica por ID
+                if (!empty($id) && is_numeric($id)) { // Verifica que $id no esté vacío y sea numérico
+                    $postulacionController->obtenerPostulacion((int)$id); // Convierte $id a entero
                 } elseif (!empty($_GET['usuario_id'])) {
                     $postulacionController->obtenerPostulacionesPorCandidato($_GET['usuario_id']); // Obtener postulaciones por candidato
                 } else {
@@ -212,12 +212,12 @@ switch ($recurso) {
                     echo json_encode(["mensaje" => "Datos JSON inválidos"]);
                     break;
                 }
-                if (empty($id)) {
+                if (empty($id) || !is_numeric($id)) { // Verifica que $id no esté vacío y sea numérico
                     http_response_code(400);
-                    echo json_encode(["mensaje" => "ID de postulación no proporcionado"]);
+                    echo json_encode(["mensaje" => "ID de postulación no proporcionado o inválido"]);
                     break;
                 }
-                $postulacionController->actualizarEstado($id, $inputData);
+                $postulacionController->actualizarEstado((int)$id, $inputData); // Convierte $id a entero
             } else {
                 http_response_code(405);
                 echo json_encode(["mensaje" => "Método no permitido"]);

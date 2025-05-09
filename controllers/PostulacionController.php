@@ -15,19 +15,30 @@ class PostulacionController {
 
 
     public function listarPostulacionesPorOferta($oferta_laboral_id) {
+        // Validar que el ID de la oferta laboral no esté vacío
         if (empty($oferta_laboral_id)) {
             http_response_code(400);
             echo json_encode(["mensaje" => "ID de oferta laboral no proporcionado"]);
             return;
         }
     
-        $postulaciones = $this->postulacion->listarPostulantesPorOferta($oferta_laboral_id);
-        if (!empty($postulaciones)) {
-            http_response_code(200);
-            echo json_encode(["data" => $postulaciones]);
-        } else {
-            http_response_code(404);
-            echo json_encode(["mensaje" => "No se encontraron postulaciones para esta oferta laboral"]);
+        // Llamar al modelo para obtener las postulaciones
+        try {
+            $postulaciones = $this->postulacion->listarPostulantesPorOferta($oferta_laboral_id);
+    
+            // Verificar si se encontraron postulaciones
+            if (!empty($postulaciones)) {
+                http_response_code(200);
+                echo json_encode(["data" => $postulaciones]);
+            } else {
+                http_response_code(404);
+                echo json_encode(["mensaje" => "No se encontraron postulaciones para esta oferta laboral"]);
+            }
+        } catch (Exception $e) {
+            // Manejar errores inesperados
+            error_log("Error en listarPostulacionesPorOferta: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(["mensaje" => "Ocurrió un error al obtener las postulaciones"]);
         }
     }
 
@@ -49,17 +60,21 @@ class PostulacionController {
     }
 
     public function obtenerPostulacion($id) {
+        error_log("Método obtenerPostulacion llamado en PostulacionController");
+    
         if (empty($id)) {
             http_response_code(400);
             echo json_encode(["mensaje" => "ID de postulación no proporcionado"]);
             return;
         }
     
+        // Cambiar $this->postulacionModel a $this->postulacion
         $postulacion = $this->postulacion->obtenerPostulacionPorId($id);
         if ($postulacion) {
             http_response_code(200);
             echo json_encode(["data" => $postulacion]);
         } else {
+            error_log("Postulación no encontrada para ID: " . $id);
             http_response_code(404);
             echo json_encode(["mensaje" => "Postulación no encontrada"]);
         }

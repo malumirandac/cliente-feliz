@@ -79,13 +79,18 @@ class Postulacion {
 
     public function obtenerPostulacionesPorCandidato($id_usuario) {
         try {
-            $query = "SELECT p.id, p.estado_postulacion, p.comentario, p.fecha_postulacion, p.fecha_actualizacion, 
-                             o.titulo AS oferta_titulo, o.descripcion AS oferta_descripcion
+            $query = "SELECT p.id AS postulacion_id, 
+                             p.estado_postulacion, 
+                             p.comentario, 
+                             p.fecha_postulacion, 
+                             p.fecha_actualizacion, 
+                             o.titulo AS oferta_titulo, 
+                             o.descripcion AS oferta_descripcion
                       FROM Postulacion p
                       INNER JOIN OfertaLaboral o ON p.oferta_laboral_id = o.id
                       WHERE p.candidato_id = :id_usuario";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':id_usuario', $id_usuario);
+            $stmt->bindParam(':id_usuario', $id_usuario, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -114,31 +119,49 @@ class Postulacion {
 
     public function listarPostulantesPorOferta($oferta_laboral_id) {
         try {
-            $query = "SELECT u.id AS candidato_id, u.nombre, u.apellido, u.email, 
-                             p.estado_postulacion, p.comentario, p.fecha_postulacion
+            $query = "SELECT p.id AS postulacion_id, 
+                             u.id AS candidato_id, 
+                             u.nombre, 
+                             u.apellido, 
+                             u.email, 
+                             p.estado_postulacion, 
+                             p.comentario, 
+                             p.fecha_postulacion
                       FROM Postulacion p
                       INNER JOIN Usuario u ON p.candidato_id = u.id
                       WHERE p.oferta_laboral_id = :oferta_laboral_id";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':oferta_laboral_id', $oferta_laboral_id);
+            $stmt->bindParam(':oferta_laboral_id', $oferta_laboral_id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            error_log("Error al listar postulantes por oferta: " . $e->getMessage());
+            error_log("Error al obtener postulantes: " . $e->getMessage());
             return [];
         }
     }
 
     public function obtenerPostulacionPorId($id) {
         try {
-            $query = "SELECT p.id, p.candidato_id, p.oferta_laboral_id, p.estado_postulacion, p.comentario, p.fecha_postulacion, p.fecha_actualizacion,
-                             u.nombre AS candidato_nombre, u.apellido AS candidato_apellido, o.titulo AS oferta_titulo
+            $query = "SELECT p.id AS postulacion_id, 
+                             p.candidato_id, 
+                             p.oferta_laboral_id, 
+                             p.estado_postulacion, 
+                             p.comentario, 
+                             p.fecha_postulacion, 
+                             p.fecha_actualizacion,
+                             u.nombre AS candidato_nombre, 
+                             u.apellido AS candidato_apellido, 
+                             o.titulo AS oferta_titulo
                       FROM Postulacion p
-                      INNER JOIN Usuario u ON p.candidato_id = u.id
-                      INNER JOIN OfertaLaboral o ON p.oferta_laboral_id = o.id
+                      LEFT JOIN Usuario u ON p.candidato_id = u.id
+                      LEFT JOIN OfertaLaboral o ON p.oferta_laboral_id = o.id
                       WHERE p.id = :id";
+
+            error_log("Consulta SQL ejecutada: " . $query);
+            error_log("ID recibido en el modelo: " . $id);
+
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':id', $id);
+            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {

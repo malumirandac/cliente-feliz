@@ -1,12 +1,14 @@
 <?php
 
 require_once './models/OfertaLaboral.php';
+require_once './models/Postulacion.php';
 
 class OfertaLaboralController {
     private $oferta;
 
     public function __construct($db) {
         $this->oferta = new OfertaLaboral($db);
+        $this->postulacion = new Postulacion($db); // Asegúrate de incluir el archivo del modelo Postulacion
     }
 
     public function listarOfertasActivas() {
@@ -119,20 +121,42 @@ class OfertaLaboralController {
         }
     }
 
-    public function actualizarEstado($postulacionId, $data) {
-        if (empty($postulacionId) || empty($data['estado'])) {
+    public function actualizarEstado($id, $data) {
+        if (empty($id) || empty($data['estado'])) {
             http_response_code(400);
             echo json_encode(["mensaje" => "ID de postulación o estado no proporcionado"]);
             return;
         }
     
-        $resultado = $this->postulacion->actualizarEstadoPostulacion($postulacionId, $data['estado']);
+        $resultado = $this->postulacion->actualizarEstadoPostulacion($id, $data['estado']);
         if ($resultado) {
             http_response_code(200);
             echo json_encode(["mensaje" => "Estado de postulación actualizado correctamente"]);
         } else {
             http_response_code(500);
             echo json_encode(["mensaje" => "No se pudo actualizar el estado de la postulación"]);
+        }
+    }
+
+    public function obtenerPostulacion($id) {
+        error_log("Método obtenerPostulacion llamado");
+    
+        if (empty($id)) {
+            http_response_code(400);
+            echo json_encode(["mensaje" => "ID de postulación no proporcionado"]);
+            return;
+        }
+    
+        error_log("ID de postulación recibido en el controlador: " . $id);
+    
+        $postulacion = $this->oferta->obtenerPostulacionPorId($id);
+        if ($postulacion) {
+            http_response_code(200);
+            echo json_encode(["data" => $postulacion]);
+        } else {
+            error_log("Postulación no encontrada para ID: " . $id);
+            http_response_code(404);
+            echo json_encode(["mensaje" => "Postulación no encontrada"]);
         }
     }
 
